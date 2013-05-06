@@ -299,15 +299,24 @@ do_fold(Itr, Fun, Acc0, Opts) ->
     end.
 
 fold_loop({error, iterator_closed}, _Itr, _Fun, Acc0) ->
-    throw({iterator_closed, Acc0});
+	throw({iterator_closed, Acc0});
 fold_loop({error, invalid_iterator}, _Itr, _Fun, Acc0) ->
-    Acc0;
+	Acc0;
 fold_loop({ok, K}, Itr, Fun, Acc0) ->
-    Acc = Fun(K, Acc0),
-    fold_loop(iterator_move(Itr, next), Itr, Fun, Acc);
-fold_loop({ok, K, V}, Itr, Fun, Acc0) ->
-    Acc = Fun({K, V}, Acc0),
-    fold_loop(iterator_move(Itr, next), Itr, Fun, Acc).
+	Acc = Fun(K, Acc0),
+	fold_loop(iterator_move(Itr, next), Itr, Fun, Acc);
+fold_loop({ok, K, V}, Itr0, Fun, Acc0) ->
+	Itr = case Fun({K, V}, Acc0) of
+			  {prev,Acc}->
+				  iterator_move(Itr0, prev);
+			  {next,Acc}->
+				  iterator_move(Itr0, next);
+			  {seek,Seek,Acc}->
+				  iterator_move(Itr0,Seek);
+			  Acc->
+				  iterator_move(Itr0, next)
+		  end,
+	fold_loop(iterator_move(Itr, next), Itr, Fun, Acc).
 
 validate_type({_Key, bool}, true)                            -> true;
 validate_type({_Key, bool}, false)                           -> true;
