@@ -109,6 +109,7 @@ ERL_NIF_TERM ATOM_FIRST;
 ERL_NIF_TERM ATOM_LAST;
 ERL_NIF_TERM ATOM_NEXT;
 ERL_NIF_TERM ATOM_PREV;
+ERL_NIF_TERM ATOM_SEEKPREV;
 ERL_NIF_TERM ATOM_INVALID_ITERATOR;
 ERL_NIF_TERM ATOM_CACHE_SIZE;
 ERL_NIF_TERM ATOM_PARANOID_CHECKS;
@@ -939,8 +940,7 @@ async_iterator_move(
     itr_ptr.assign(ItrObject::RetrieveItrObject(env, itr_handle_ref));
 
     // prefetch logic broke PREV and not fixing for Riak
-    if(NULL==itr_ptr.get()
-       || (enif_is_atom(env, action_or_target) && ATOM_PREV==action_or_target))
+    if(NULL==itr_ptr.get())
         return enif_make_badarg(env);
 
     // Reuse ref from iterator creation
@@ -949,7 +949,7 @@ async_iterator_move(
     /* We can be invoked with two different arities from Erlang. If our "action_atom" parameter is not
        in fact an atom, then it is actually a seek target. Let's find out which we are: */
     eleveldb::MoveTask::action_t action = eleveldb::MoveTask::SEEK;
-
+    ERL_NIF_TERM actionseektarget = action_or_target;
     // If we have an atom, it's one of these (action_or_target's value is ignored):
     if(enif_is_atom(env, action_or_target))
     {
@@ -958,6 +958,21 @@ async_iterator_move(
         if(ATOM_NEXT == action_or_target)   action = eleveldb::MoveTask::NEXT;
         if(ATOM_PREV == action_or_target)   action = eleveldb::MoveTask::PREV;
     }   // if
+    else if(enif_is_tuple(env,action_or_target)){
+    	int seek_arity;
+    	const ERL_NIF_TERM* seek_tuple;
+    	if(enif_get_tuple(env,action_or_target,&seek_arity,&seek_tuple)){
+    		if(seek_arity==2 && seek_tuple[0]== ATOM_SEEKPREV){
+    			action = eleveldb::MoveTask::SEEKPREV;
+    			actionseektarget = seek_tuple[1];
+    		}
+    		else
+    			enif_make_badarg(env);
+    	}
+    	else{
+    		enif_make_badarg(env);
+    	}
+    }
 
 
     //
@@ -1033,11 +1048,11 @@ async_iterator_move(
 
         move_item->action=action;
 
-        if (eleveldb::MoveTask::SEEK == action)
+        if (eleveldb::MoveTask::SEEK == action || eleveldb::MoveTask::SEEKPREV == action)
         {
             ErlNifBinary key;
 
-            if(!enif_inspect_binary(env, action_or_target, &key))
+            if(!enif_inspect_binary(env,actionseektarget, &key))
             {
                 itr_ptr->ReleaseReuseMove();
 		itr_ptr->reuse_move=NULL;
@@ -1380,6 +1395,7 @@ try
     ATOM(eleveldb::ATOM_LAST, "last");
     ATOM(eleveldb::ATOM_NEXT, "next");
     ATOM(eleveldb::ATOM_PREV, "prev");
+    ATOM(eleveldb::ATOM_SEEKPREV, "seekprev");
     ATOM(eleveldb::ATOM_INVALID_ITERATOR, "invalid_iterator");
     ATOM(eleveldb::ATOM_CACHE_SIZE, "cache_size");
     ATOM(eleveldb::ATOM_PARANOID_CHECKS, "paranoid_checks");

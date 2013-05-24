@@ -196,7 +196,13 @@ MoveTask::operator()()
         case NEXT:  if(itr->Valid()) itr->Next(); break;
 
         case PREV:  if(itr->Valid()) itr->Prev(); break;
-
+        case SEEKPREV:
+        {
+        	leveldb::Slice key_slice(seek_target);
+        	itr->Seek(key_slice);
+        	if(itr->Valid()) itr->Prev();
+        	break;
+        }
         case SEEK:
         {
             leveldb::Slice key_slice(seek_target);
@@ -230,7 +236,7 @@ MoveTask::operator()()
 
         if(itr->Valid())
         {
-            if (NEXT==action || SEEK==action || FIRST==action)
+            if (NEXT==action || SEEK==action || FIRST==action || SEEKPREV==action)
             {
                 prepare_recycle();
                 action=NEXT;

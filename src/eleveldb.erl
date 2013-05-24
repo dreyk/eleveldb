@@ -307,6 +307,8 @@ fold_loop({ok, K}, Itr, Fun, Acc0) ->
 	fold_loop(iterator_move(Itr, next), Itr, Fun, Acc);
 fold_loop({ok, K, V}, Itr0, Fun, Acc0) ->
 	Itr = case Fun({K, V}, Acc0) of
+			  {{prev,From},Acc}->
+				  iterator_move(Itr0, {seekprev,From});
 			  {prev,Acc}->
 				  iterator_move(Itr0, prev);
 			  {next,Acc}->
@@ -316,7 +318,7 @@ fold_loop({ok, K, V}, Itr0, Fun, Acc0) ->
 			  Acc->
 				  iterator_move(Itr0, next)
 		  end,
-	fold_loop(iterator_move(Itr, next), Itr, Fun, Acc).
+	fold_loop(Itr, Itr0, Fun, Acc).
 
 validate_type({_Key, bool}, true)                            -> true;
 validate_type({_Key, bool}, false)                           -> true;

@@ -48,7 +48,7 @@ case "$1" in
 
     get-deps)
         if [ ! -d leveldb ]; then
-            git clone git://github.com/basho/leveldb
+            git clone ssh://git@127.0.0.1:3434/basho/leveldb
             (cd leveldb && git checkout $LEVELDB_VSN)
         fi
         ;;
